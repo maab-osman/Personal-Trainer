@@ -178,7 +178,14 @@ const App: FC = () => {
               </ErrorBoundary>
             }
           />
-          <Route path="/calendar" element={<CalendarPage />} />
+          <Route
+            path="/calendar"
+            element={
+              <ErrorBoundary>
+                <CalendarPage />
+              </ErrorBoundary>
+            }
+          />
           <Route path="/statistics" element={<StatisticsPage />} />
         </Routes>
       </Box>

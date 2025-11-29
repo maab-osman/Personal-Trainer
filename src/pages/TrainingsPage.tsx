@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 
 import { getTrainings, deleteTrainingById, deleteTraining } from '../trainingapi';
@@ -11,6 +11,7 @@ import {
   TextField,
   IconButton,
   Paper,
+  Button,
 } from '@mui/material';
 
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,6 +20,16 @@ import dayjs from 'dayjs';
 function TrainingsPage() {
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [quickFilter, setQuickFilter] = useState('');
+  
+  const filteredTrainings = trainings.filter((t: any) => {
+    const term = quickFilter.trim().toLowerCase();
+    if (!term) return true;
+    const dateStr = t.date ? dayjs(String(t.date)).format('DD.MM.YYYY hh:mm A') : '';
+    return [t.activity, t.customerName, dateStr, String(t.duration)]
+      .join(' ')
+      .toLowerCase()
+      .includes(term);
+  });
 
   const fetchTrainings = () => {
     getTrainings()
@@ -110,6 +121,28 @@ function TrainingsPage() {
     },
   ];
 
+  const handleExportCsv = () => {
+    const headers = ['date', 'activity', 'duration', 'customer'];
+    const rows = filteredTrainings.map((r: any) => {
+      const dateStr = r.date ? dayjs(String(r.date)).format('DD.MM.YYYY hh:mm A') : '';
+      const values = [dateStr, r.activity ?? '', r.duration ?? '', r.customerName ?? ''];
+      return values
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
+    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trainings.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     // OUTER: full width container to allow grid to stretch to the page
     <Box sx={{ width: '100%', display: 'block', mt: 2 }}>
@@ -125,21 +158,20 @@ function TrainingsPage() {
             placeholder="Search by activity, customer..."
             sx={{ flex: 1 }}
           />
-          {/* Toolbar with export will appear inside the DataGrid itself */}
+          <Button variant="contained" color="primary" onClick={handleExportCsv}>Export CSV</Button>
         </Paper>
 
         {/* GRID */}
         <Paper sx={{ height: 600, width: '100%' }}>
           <DataGrid
-            rows={trainings}
+            rows={filteredTrainings}
             getRowId={(row) => row.id ?? (row as any)?._links?.self?.href ?? Math.random()}
             columns={columns}
             disableRowSelectionOnClick
             pagination
             pageSizeOptions={[10, 25, 50]}
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{ toolbar: { showQuickFilter: true } }}
+            // Using custom top bar for search and export; omit grid toolbar here
             sx={{ height: '100%', width: '100%' }}
           />
         </Paper>

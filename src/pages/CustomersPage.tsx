@@ -1,6 +1,6 @@
 // src/pages/CustomersPage.tsx
 import { type FC, useEffect, useMemo, useState } from 'react';
-import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { DataGrid, type GridColDef, GridToolbarQuickFilter } from '@mui/x-data-grid';
 import {
   Box,
   TextField,
@@ -21,6 +21,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 
 const API_BASE_URL = 'https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api';
 
@@ -60,11 +61,19 @@ const CustomersPage: FC = () => {
   // Training dialog state
   const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
   const [selectedCustomerForTraining, setSelectedCustomerForTraining] = useState<Customer | null>(null);
-  const [trainingForm, setTrainingForm] = useState({
+  type TrainingForm = { date: Dayjs | null; activity: string; duration: string };
+  const [trainingForm, setTrainingForm] = useState<TrainingForm>({
     date: dayjs(),
     activity: '',
-    duration: 0,
+    duration: '',
   });
+  const durationNum = Number(trainingForm.duration);
+  const durationInvalid = !Number.isFinite(durationNum) || durationNum <= 0;
+  const activityInvalid = !trainingForm.activity.trim();
+  const dateInvalid = !trainingForm.date || !trainingForm.date.isValid();
+
+  // Simple validation errors for customer dialog
+  const [customerErrors, setCustomerErrors] = useState<Record<string, string>>({});
   const [savingTraining, setSavingTraining] = useState(false);
 
   useEffect(() => {
@@ -118,7 +127,7 @@ const CustomersPage: FC = () => {
             sx={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'none', fontWeight: 500 }}
             onClick={() => {
               setSelectedCustomerForTraining(params.row);
-              setTrainingForm({ date: dayjs(), activity: '', duration: 0 });
+              setTrainingForm({ date: dayjs(), activity: '', duration: '' });
               setTrainingDialogOpen(true);
             }}
           >
@@ -129,6 +138,7 @@ const CustomersPage: FC = () => {
             size="small"
             onClick={() => {
               setEditingCustomer(params.row);
+              setCustomerErrors({});
               setDialogOpen(true);
             }}
           >
@@ -203,16 +213,36 @@ const CustomersPage: FC = () => {
   const handleExportCsv = () => {
     // Build CSV from filteredRows and exclude actions
     const headers = ['firstname', 'lastname', 'email', 'phone', 'city', 'streetaddress', 'postcode'];
-    const rows = filteredRows.map((r) => headers.map((h) => JSON.stringify((r as any)[h] ?? '')).join(','));
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const rows = filteredRows.map((r) => headers.map((h) => {
+      const val = (r as any)[h] ?? '';
+      // Escape double quotes and wrap in quotes to be safe
+      const safe = String(val).replace(/"/g, '""');
+      return `"${safe}"`;
+    }).join(','));
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    // Add UTF-8 BOM so Excel opens characters correctly
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'customers.csv';
+    // Some browsers require element to be in the DOM to trigger click
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  // Custom toolbar: quick filter + explicit Export CSV
+  const CustomToolbar = () => (
+    <Box sx={{ p: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
+      <GridToolbarQuickFilter />
+      <Button variant="contained" color="primary" size="small" onClick={handleExportCsv}>
+        Export CSV
+      </Button>
+    </Box>
+  );
 
   const handleDialogSave = async (customer: Partial<Customer>) => {
     try {
@@ -252,14 +282,16 @@ const CustomersPage: FC = () => {
 
   const handleSaveTraining = async () => {
     if (!selectedCustomerForTraining) return;
+    if (durationInvalid || activityInvalid || dateInvalid) return; // guard: do not submit invalid values
 
     try {
       setSavingTraining(true);
       const customerUrl = selectedCustomerForTraining._links.self.href;
+      const durationNum = Number(trainingForm.duration);
       const trainingData = {
-        date: trainingForm.date.toISOString(),
+        date: trainingForm.date!.toISOString(),
         activity: trainingForm.activity,
-        duration: trainingForm.duration,
+        duration: Number.isFinite(durationNum) ? durationNum : 0,
         customer: customerUrl,
       };
 
@@ -272,7 +304,7 @@ const CustomersPage: FC = () => {
       if (!res.ok) throw new Error('Failed to save training');
       setTrainingDialogOpen(false);
       setSelectedCustomerForTraining(null);
-      setTrainingForm({ date: dayjs(), activity: '', duration: 0 });
+      setTrainingForm({ date: dayjs(), activity: '', duration: '' });
     } catch (err) {
       console.error('Failed to save training:', err);
     } finally {
@@ -296,7 +328,7 @@ const CustomersPage: FC = () => {
           placeholder="Search by name, email, city..."
           sx={{ flex: 1 }}
         />
-        <Button variant="outlined" onClick={() => { setEditingCustomer(null); setDialogOpen(true); }}>
+        <Button variant="outlined" onClick={() => { setEditingCustomer(null); setCustomerErrors({}); setDialogOpen(true); }}>
           Add Customer
         </Button>
         <Button variant="contained" onClick={handleExportCsv}>
@@ -317,6 +349,7 @@ const CustomersPage: FC = () => {
             columns={columns}
             disableRowSelectionOnClick
             sortingOrder={['asc', 'desc']}
+            slots={{ toolbar: CustomToolbar }}
           />
         </Paper>
       )}
@@ -325,29 +358,39 @@ const CustomersPage: FC = () => {
         <DialogTitle>{editingCustomer ? 'Edit customer' : 'Add customer'}</DialogTitle>
         <DialogContent>
           {/* Simple form - reuse fields from Customer */}
+          {/* Required: firstname, lastname, email, phone, city */}
           <Box sx={{ display: 'grid', gap: 2, mt: 1 }}>
-            <TextField label="First name" defaultValue={editingCustomer?.firstname ?? ''} id="firstname" />
-            <TextField label="Last name" defaultValue={editingCustomer?.lastname ?? ''} id="lastname" />
-            <TextField label="Email" defaultValue={editingCustomer?.email ?? ''} id="email" />
-            <TextField label="Phone" defaultValue={editingCustomer?.phone ?? ''} id="phone" />
+            <TextField label="First name" defaultValue={editingCustomer?.firstname ?? ''} id="firstname" error={Boolean(customerErrors.firstname)} helperText={customerErrors.firstname || ' '} />
+            <TextField label="Last name" defaultValue={editingCustomer?.lastname ?? ''} id="lastname" error={Boolean(customerErrors.lastname)} helperText={customerErrors.lastname || ' '} />
+            <TextField label="Email" defaultValue={editingCustomer?.email ?? ''} id="email" error={Boolean(customerErrors.email)} helperText={customerErrors.email || ' '} />
+            <TextField label="Phone" defaultValue={editingCustomer?.phone ?? ''} id="phone" error={Boolean(customerErrors.phone)} helperText={customerErrors.phone || ' '} />
             <TextField label="Street" defaultValue={editingCustomer?.streetaddress ?? ''} id="streetaddress" />
             <TextField label="Postcode" defaultValue={editingCustomer?.postcode ?? ''} id="postcode" />
-            <TextField label="City" defaultValue={editingCustomer?.city ?? ''} id="city" />
+            <TextField label="City" defaultValue={editingCustomer?.city ?? ''} id="city" error={Boolean(customerErrors.city)} helperText={customerErrors.city || ' '} />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button
             onClick={() => {
-              const c = {
-                firstname: (document.getElementById('firstname') as HTMLInputElement).value,
-                lastname: (document.getElementById('lastname') as HTMLInputElement).value,
-                email: (document.getElementById('email') as HTMLInputElement).value,
-                phone: (document.getElementById('phone') as HTMLInputElement).value,
-                streetaddress: (document.getElementById('streetaddress') as HTMLInputElement).value,
-                postcode: (document.getElementById('postcode') as HTMLInputElement).value,
-                city: (document.getElementById('city') as HTMLInputElement).value,
-              } as Partial<Customer>;
+              const firstname = (document.getElementById('firstname') as HTMLInputElement).value.trim();
+              const lastname = (document.getElementById('lastname') as HTMLInputElement).value.trim();
+              const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+              const phone = (document.getElementById('phone') as HTMLInputElement).value.trim();
+              const streetaddress = (document.getElementById('streetaddress') as HTMLInputElement).value.trim();
+              const postcode = (document.getElementById('postcode') as HTMLInputElement).value.trim();
+              const city = (document.getElementById('city') as HTMLInputElement).value.trim();
+
+              const errors: Record<string, string> = {};
+              if (!firstname) errors.firstname = 'First name is required';
+              if (!lastname) errors.lastname = 'Last name is required';
+              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Valid email is required';
+              if (!phone) errors.phone = 'Phone is required';
+              if (!city) errors.city = 'City is required';
+              setCustomerErrors(errors);
+              if (Object.keys(errors).length > 0) return;
+
+              const c = { firstname, lastname, email, phone, streetaddress, postcode, city } as Partial<Customer>;
               void handleDialogSave(c);
             }}
             disabled={saving}
@@ -366,7 +409,7 @@ const CustomersPage: FC = () => {
               <DateTimePicker
                 label="Date and time"
                 value={trainingForm.date}
-                onChange={(newValue) => setTrainingForm({ ...trainingForm, date: newValue! })}
+                onChange={(newValue) => setTrainingForm({ ...trainingForm, date: newValue })}
                 sx={{ width: '100%' }}
               />
             </LocalizationProvider>
@@ -375,6 +418,8 @@ const CustomersPage: FC = () => {
               fullWidth
               value={trainingForm.activity}
               onChange={(e) => setTrainingForm({ ...trainingForm, activity: e.target.value })}
+              error={activityInvalid}
+              helperText={activityInvalid ? 'Activity is required' : ' '}
               variant="outlined"
             />
             <TextField
@@ -382,14 +427,18 @@ const CustomersPage: FC = () => {
               fullWidth
               type="number"
               value={trainingForm.duration}
-              onChange={(e) => setTrainingForm({ ...trainingForm, duration: Number(e.target.value) })}
+              onChange={(e) => setTrainingForm({ ...trainingForm, duration: e.target.value })}
+              placeholder="e.g. 60"
+              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', min: 1, step: 1 }}
+              error={durationInvalid}
+              helperText={durationInvalid ? 'Enter a positive number of minutes' : ' '}
               variant="outlined"
             />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTrainingDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveTraining} disabled={savingTraining}>
+          <Button onClick={handleSaveTraining} disabled={savingTraining || durationInvalid || activityInvalid || dateInvalid}>
             {savingTraining ? 'Saving...' : 'Save Training'}
           </Button>
         </DialogActions>

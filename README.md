@@ -1,73 +1,71 @@
-# React + TypeScript + Vite
+# Personal Trainer (Final Project)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Beginner-friendly React + TypeScript app for the Frontend Programming 2025 course. Manage customers and trainings, view statistics, and see upcoming sessions on a calendar. Includes CSV export and basic form validation.
 
-Currently, two official plugins are available:
+- Live site: https://maab-osman.github.io/Personal-Trainer/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
+- Customers: search, add/edit/delete, add training for a customer, export CSV.
+- Trainings: searchable list, export CSV of the filtered result.
+- Statistics: date range filters with bar/pie/line charts, export CSV.
+- Calendar: month/week/day/agenda views with working navigation.
+- Validation: required fields for customers; training requires date, activity, and positive duration.
 
-## React Compiler
+## Tech Stack
+- React 19 + TypeScript + Vite
+- UI: MUI (Material UI), MUI X DataGrid, MUI Date Pickers
+- Charts: Recharts
+- Calendar: react-big-calendar + date-fns localizer
+- Dates: dayjs
+- Router: react-router-dom v7
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Data Source
+Public demo API (no auth): `https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api`
+- `GET /customers` – list customers
+- `POST /customers` – create customer
+- `PUT /customers/{id}` – update customer
+- `DELETE /customers/{id}` – delete customer
+- `POST /trainings` – create training
+- `GET /gettrainings` – list trainings with customer info
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Prerequisites
+- Node.js 18+ and npm
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Install and run (dev):
+```bash
+npm install
+npm run dev
+```
+Vite will show the local URL. Because the app is configured for GitHub Pages, the dev URL includes the base path, e.g. `http://localhost:5173/Personal-Trainer/`.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Production build and preview:
+```bash
+npm run build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deployment (GitHub Pages)
+- This repo includes a GitHub Actions workflow that builds and deploys to GitHub Pages.
+- In GitHub settings, enable Pages and set source to “GitHub Actions”.
+- The Vite base and router basename are set to `/Personal-Trainer/` so the app works under Pages.
+- After pushing to `main`, the workflow publishes to: https://maab-osman.github.io/Personal-Trainer/
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Notes for Reviewers
+- CSV exports include a UTF‑8 BOM so Excel opens them correctly.
+- The calendar limits events to roughly the last 12 months for stability and performance.
+- If the demo API is down, lists may show an error until it’s back.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Project Structure (simplified)
 ```
+src/
+  App.tsx
+  pages/
+    CustomersPage.tsx
+    TrainingsPage.tsx
+    CalendarPage.tsx
+    StatisticsPage.tsx
+```
+
+This project is intended for learning purposes as a final assignment in a beginner frontend course.

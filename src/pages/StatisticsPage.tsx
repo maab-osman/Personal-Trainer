@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Box, Paper, Typography, Card, CardContent, Tabs, Tab, Button } from '@mui/material';
+import { Box, Paper, Typography, Tabs, Tab, Button } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { getTrainings } from '../trainingapi';
-// If recharts is not installed yet, show a helpful hint.
 import {
   ResponsiveContainer,
   BarChart,
@@ -98,36 +97,19 @@ function StatisticsPage() {
         <Tab label="Minutes per Day (Line)" />
       </Tabs>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
-          <Box>
-            <DatePicker label="Start date" value={startDate} onChange={setStartDate} />
-          </Box>
-          <Box>
-            <DatePicker label="End date" value={endDate} onChange={setEndDate} />
-          </Box>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <DatePicker label="Start date" value={startDate} onChange={setStartDate} />
+          <DatePicker label="End date" value={endDate} onChange={setEndDate} />
+          <Box sx={{ flexGrow: 1 }} />
+          <Button variant="contained" color="primary" onClick={() => exportCsv(data)}>
+            Download CSV
+          </Button>
         </Box>
       </LocalizationProvider>
 
-      {/* Top 3 activities summary */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2, mb: 2 }}>
-        {data.slice(0, 3).map((d) => (
-          <Card key={d.activity}>
-            <CardContent>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {d.activity}
-              </Typography>
-              <Typography variant="body2">Total minutes: {d.minutes}</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
+      {/* Removed highest training boxes per request */}
 
-      {/* CSV export for current aggregation */}
-      <Box sx={{ mb: 2 }}>
-        <Button variant="outlined" onClick={() => exportCsv(data)}>
-          Download CSV (Activity Minutes)
-        </Button>
-      </Box>
+      {/* CSV export button moved inline with date pickers */}
 
       {tab === 0 && (
         <Paper sx={{ p: 2, mb: 3 }}>
