@@ -6,9 +6,16 @@ React + TypeScript app for the Frontend Programming 2025 course. Manage customer
 
 ## Features
 - Customers: search, add/edit/delete, add training for a customer, export CSV.
+<img width="1435" height="718" alt="Screenshot 2025-11-29 at 2 47 15 PM" src="https://github.com/user-attachments/assets/ef5368cc-9df5-4e89-81b7-deb58346c436" />
+
+  
 - Trainings: searchable list, export CSV of the filtered result.
 - Statistics: date range filters with bar/pie/line charts, export CSV.
+<img width="1437" height="707" alt="Screenshot 2025-11-29 at 2 47 48 PM" src="https://github.com/user-attachments/assets/f7d2eb02-4601-4ae3-b45c-63eb43dd2c8a" />
 - Calendar: month/week/day/agenda views with working navigation.
+
+<img width="1417" height="758" alt="Screenshot 2025-11-29 at 2 48 44 PM" src="https://github.com/user-attachments/assets/ef5f5ec8-af5c-4bce-9781-4c518f8843b3" />
+
 - Validation: required fields for customers; training requires date, activity, and positive duration.
 
 ## Tech Stack
