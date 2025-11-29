@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { AgGridReact } from '@ag-grid-community/react';
-import { ModuleRegistry } from '@ag-grid-community/core';
-import { ClientSideRowModelModule } from '@ag-grid-community/client-side-row-model';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import type { GridColDef } from '@mui/x-data-grid';
 
 import { getTrainings, deleteTrainingById, deleteTraining } from '../trainingapi';
 import type { Training } from '../types';
@@ -16,9 +15,6 @@ import {
 
 import DeleteIcon from '@mui/icons-material/Delete';
 import dayjs from 'dayjs';
-import type { ColDef } from '@ag-grid-community/core';
-
-ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 function TrainingsPage() {
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -26,7 +22,14 @@ function TrainingsPage() {
 
   const fetchTrainings = () => {
     getTrainings()
-      .then((data) => setTrainings(data))
+      .then((data) => {
+        const mapped = (Array.isArray(data) ? data : []).map((t: any) => {
+          const id = t.id ?? t?._links?.self?.href ?? `${t.date}-${t.activity}-${Math.random()}`;
+          const customerName = t.customer ? `${t.customer.firstname} ${t.customer.lastname}` : 'N/A';
+          return { ...t, id, customerName };
+        });
+        setTrainings(mapped);
+      })
       .catch((err) => console.error('Failed to fetch trainings:', err));
   };
 
@@ -34,8 +37,7 @@ function TrainingsPage() {
     fetchTrainings();
   }, []);
 
-  // We use the AgGridReact `quickFilterText` prop instead of calling setQuickFilter
-  // on the API (some versions expose different shapes). This keeps the filter
+  //  AgGridReact `quickFilterText` prop instead of calling setQuickFilter
   // behavior stable across ag-grid versions.
 
   const handleDelete = (idOrUrl: string | number) => {
@@ -57,72 +59,60 @@ function TrainingsPage() {
     void doDelete();
   };
 
-  const [colDefs] = useState<ColDef<Training>[]>([
+  const columns: GridColDef[] = [
     {
+      field: 'actions',
       headerName: 'Actions',
-      colId: 'actions',
-      width: 90,
-      pinned: 'left',
       sortable: false,
-      filter: false,
-      cellRenderer: (params: any) => {
-        const id = params.data?.id ?? params.data?._links?.self?.href?.split('/')?.pop();
+      filterable: false,
+      width: 120,
+      renderCell: (params) => {
+        const row: any = params.row;
+        const id = row?.id ?? row?._links?.self?.href?.split('/')?.pop();
         return (
-          <IconButton
-            size="small"
-            onClick={() => handleDelete(id)}
-            aria-label="delete training"
-          >
+          <IconButton size="small" onClick={() => handleDelete(id)} aria-label="delete training">
             <DeleteIcon />
           </IconButton>
         );
       },
     },
     {
-      headerName: 'Date',
       field: 'date',
-      filter: true,
-      sortable: true,
+      headerName: 'Date',
       flex: 1.4,
       minWidth: 180,
-      valueFormatter: (params) =>
-        dayjs(params.value).format('DD.MM.YYYY HH:mm'),
+      sortable: true,
+      renderCell: (params: any) => {
+        const v = params?.row?.date ?? params?.value;
+        return v ? dayjs(String(v)).format('DD.MM.YYYY hh:mm A') : '';
+      },
     },
     {
       field: 'activity',
       headerName: 'Activity',
-      filter: true,
-      sortable: true,
       flex: 1.2,
       minWidth: 140,
+      sortable: true,
     },
     {
       field: 'duration',
       headerName: 'Duration (min)',
-      filter: true,
-      sortable: true,
       flex: 0.8,
       minWidth: 130,
+      sortable: true,
     },
     {
+      field: 'customerName',
       headerName: 'Customer',
-      valueGetter: (params) => {
-        const customer = params.data?.customer;
-        return customer
-          ? `${customer.firstname} ${customer.lastname}`
-          : 'N/A';
-      },
-      filter: true,
-      sortable: true,
       flex: 1.4,
       minWidth: 180,
+      sortable: true,
     },
-  ]);
+  ];
 
   return (
-    // OUTER: full width container — allow grid to stretch to the page
+    // OUTER: full width container to allow grid to stretch to the page
     <Box sx={{ width: '100%', display: 'block', mt: 2 }}>
-      {/* INNER: use full width (remove centered maxWidth wrapper so table fills page) */}
       <Box sx={{ width: '100%' }}>
         {/* Header row with search only */}
         <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -135,26 +125,23 @@ function TrainingsPage() {
             placeholder="Search by activity, customer..."
             sx={{ flex: 1 }}
           />
+          {/* Toolbar with export will appear inside the DataGrid itself */}
         </Paper>
 
         {/* GRID */}
         <Paper sx={{ height: 600, width: '100%' }}>
-          <Box className="ag-theme-material" sx={{ height: '100%', width: '100%' }}>
-            <AgGridReact
-              rowData={trainings}
-              columnDefs={colDefs}
-              pagination={true}
-              paginationAutoPageSize={true}
-              suppressRowClickSelection={true}
-              quickFilterText={quickFilter}
-              onGridReady={(params) => {
-                // size columns to fit available width initially
-                setTimeout(() => params.api.sizeColumnsToFit(), 50);
-              }}
-              onFirstDataRendered={(params) => params.api.sizeColumnsToFit()}
-              defaultColDef={{ resizable: true }}
-            />
-          </Box>
+          <DataGrid
+            rows={trainings}
+            getRowId={(row) => row.id ?? (row as any)?._links?.self?.href ?? Math.random()}
+            columns={columns}
+            disableRowSelectionOnClick
+            pagination
+            pageSizeOptions={[10, 25, 50]}
+            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{ toolbar: { showQuickFilter: true } }}
+            sx={{ height: '100%', width: '100%' }}
+          />
         </Paper>
       </Box>
     </Box>

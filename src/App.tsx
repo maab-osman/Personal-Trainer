@@ -22,10 +22,12 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PeopleIcon from '@mui/icons-material/People';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 import CustomersPage from './pages/CustomersPage';
 import TrainingsPage from './pages/TrainingsPage';
 import CalendarPage from './pages/CalendarPage';
+import StatisticsPage from './pages/StatisticsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const drawerWidth = 240;
@@ -81,6 +83,7 @@ const App: FC = () => {
     { text: 'Customers', path: '/customers', icon: <PeopleIcon /> },
     { text: 'Trainings', path: '/trainings', icon: <FitnessCenterIcon /> },
     { text: 'Calendar', path: '/calendar', icon: <CalendarMonthIcon /> },
+    { text: 'Statistics', path: '/statistics', icon: <BarChartIcon /> },
   ];
 
   return (
@@ -176,6 +179,7 @@ const App: FC = () => {
             }
           />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/statistics" element={<StatisticsPage />} />
         </Routes>
       </Box>
     </Box>
