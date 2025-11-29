@@ -1,4 +1,4 @@
-# Personal Trainer (Final Project)
+# Personal Trainer
 
 Beginner-friendly React + TypeScript app for the Frontend Programming 2025 course. Manage customers and trainings, view statistics, and see upcoming sessions on a calendar. Includes CSV export and basic form validation.
 
